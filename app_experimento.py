@@ -300,7 +300,8 @@ else:
         
         if st.button("Estou Pronto! ⏱️"):
             st.session_state.etapa = "exposicao"
-            st.session_state.tempo = st.session_state.tempo
+            st.session_state.tempo = 0
+            st.session_state.tempoInicial = time.monotonic()
             st.rerun()
 
     elif st.session_state.etapa == "exposicao":
@@ -322,10 +323,8 @@ else:
         
         placeholder_timer = st.empty()
 
-        if "tempo" not in st.session_state:
-            st.session_state.tempoInicial = time.monotonic()
-        
-        while True:
+        @st.fragment(run_every="1s")
+        def cronometro():
             t = int(time.monotonic() - st.session_state.tempoInicial)
             st.session_state.tempo = t
 
@@ -337,14 +336,12 @@ else:
 
             if t >= 60:
                 if st.button("Passar para fase de recuperação"):
-                    time.sleep(1)
-                    st.session_state.tempo= st.session_state.tempo_str
+                    st.session_state.tempo_str = f"{t} segundos"
+                    st.session_state.tempo= t
                     st.session_state.etapa = "recuperacao"
                     st.rerun()
                
-            
-
-
+        cronometro()
 
 
     elif st.session_state.etapa == "recuperacao":
