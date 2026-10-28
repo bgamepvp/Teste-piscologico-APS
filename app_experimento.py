@@ -43,15 +43,17 @@ if "respostas_manual_pesquisador" not in st.session_state:
 
 DB_FILE = "resultados_experimento.csv"
 
-def salvar_resultado_local(nome,idade, graduacao, grupo, acertos, palavras_digitadas):
+def salvar_resultado_local(nome,idade, graduacao, grupo, tempo, acertos, palavras_digitadas, tcle=False):
     novo_dado = pd.DataFrame([{
         "Data": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M:%S"),
         "Nome": nome,
         "Idade":idade,
         "Graduação": graduacao,
+        "tempo": tempo,
         "Grupo": grupo,
         "Acertos": acertos,
-        "Palavras Digitadas": ", ".join(palavras_digitadas)
+        "Palavras Digitadas": ", ".join(palavras_digitadas),
+        "TCLE": tcle
     }])
     if os.path.exists(DB_FILE):
         try:
@@ -105,6 +107,7 @@ if st.session_state.get("ver_pesquisador", False):
                     "Graduação": row["Graduação"],
                     "TCLE": row.get("TCLE", ""),  # esta parte faz referencia a um campo booleano que indica se o participante aceitou o termo de consentimento
                     "Grupo": row["Grupo"],
+                    "Tempo": int(row.get("Tempo", 0)),
                     "Acertos": int(row["Acertos"]),
                     "Palavras": row["Palavras Digitadas"]
                 })
@@ -125,6 +128,8 @@ if st.session_state.get("ver_pesquisador", False):
                 nome_part = ""
                 idade = ""
                 graduacao = ""
+                tempo_str = ""
+                tempo_int = 0
                 grupo_part = ""
                 pontos_part = 0
                 palavras_part = ""
@@ -136,6 +141,13 @@ if st.session_state.get("ver_pesquisador", False):
                         idade = linha.split(":")[1].strip()
                     elif "Graduação:" in linha:
                         graduacao = linha.split(":")[1].strip()
+                    elif "Tempo:" in linha:
+                        tempo_str = linha.split(":")[1].strip()
+                        try:
+                            tempo_int = int(tempo_str.split()[0])
+                            st.session_state.tempo = tempo_int
+                        except ValueError:
+                            st.warning("Formato de tempo inválido no comprovante. Tempo não registrado.")
                     elif "Grupo:" in linha:
                         grupo_part = linha.split(":")[1].strip()
                     elif "Pontuação:" in linha:
@@ -151,7 +163,8 @@ if st.session_state.get("ver_pesquisador", False):
                         "Grupo": grupo_part,
                         "Acertos": pontos_part,
                         "Palavras": palavras_part,
-                        "TCLE": False  # Inicialmente, o termo de consentimento não foi aceito
+                        "TCLE": False,  # Inicialmente, o termo de consentimento não foi aceito
+                        "Tempo": st.session_state.tempo
                     })
                     st.success(f"Participante {nome_part} adicionado com sucesso para esta sessão!")
                     st.rerun()
@@ -308,18 +321,28 @@ else:
         st.divider()
         
         placeholder_timer = st.empty()
+
+        if "tempo" not in st.session_state:
+            st.session_state.tempoInicial = time.monotonic()
         
-        for t in range(st.session_state.tempo, 70, 1):
+        while True:
+            t = int(time.monotonic() - st.session_state.tempoInicial)
             st.session_state.tempo = t
-            placeholder_timer.markdown(f"<h2 style='text-align: center; color: #93C47D;'>Tempo: {t} segundos</h2>", unsafe_allow_html=True)
+
+            placeholder_timer.markdown(
+                f"<h2 style='text-align: center; color: #93C47D;'>"
+                f"Tempo: {t} segundos</h2>",
+                unsafe_allow_html=True
+            )
+
             if t >= 60:
                 if st.button("Passar para fase de recuperação"):
-                    st.session_state.tempo= 60
+                    time.sleep(1)
+                    st.session_state.tempo= st.session_state.tempo_str
                     st.session_state.etapa = "recuperacao"
                     st.rerun()
-                else:
-                    break
-            time.sleep(1)
+               
+            
 
 
 
