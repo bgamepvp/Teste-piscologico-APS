@@ -390,7 +390,7 @@ else:
             st.session_state.palavras_incorretas = palavras_incorretas
             st.session_state.palavras_digitadas = palavras_digitadas
 
-            salvar_resultado_local(st.session_state.nome,st.session_state.idade,st.session_state.graduacao,st.session_state.tempo,st.session_state.grupo, acertos, palavras_digitadas)
+            salvar_resultado_local(st.session_state.nome,st.session_state.idade,st.session_state.graduacao,st.session_state.tempo,st.session_state.grupo, st.session_state.acertos, st.session_state.palavras_digitadas)
             
             st.session_state.etapa = "resultado"
             st.rerun()
