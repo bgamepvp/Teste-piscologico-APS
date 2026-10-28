@@ -96,7 +96,14 @@ if st.session_state.get("ver_pesquisador", False):
     """)
     
     dados_totais = []
-    
+    def converter_int(valor, padrao=0):
+            try:
+                if pd.isna(valor) or str(valor).strip() == "":
+                    return padrao
+                return int(float(valor))
+            except (ValueError, TypeError):
+                return padrao
+            
     if os.path.exists(DB_FILE):
         try:
             df_csv = pd.read_csv(DB_FILE)
@@ -107,8 +114,8 @@ if st.session_state.get("ver_pesquisador", False):
                     "Graduação": row["Graduação"],
                     "TCLE": row.get("TCLE", ""),  # esta parte faz referencia a um campo booleano que indica se o participante aceitou o termo de consentimento
                     "Grupo": row["Grupo"],
-                    "Tempo": int(row.get("tempo", row.get("Tempo", 0))),
-                    "Acertos": int(row["Acertos"]),
+                    "Tempo": converter_int(row.get("tempo", row.get("Tempo", 0))),
+                    "Acertos": converter_int(row["Acertos"], 0),
                     "Palavras": row["Palavras Digitadas"]
                 })
         except Exception as e:
