@@ -60,13 +60,13 @@ def salvar_resultado_local(nome,idade, graduacao, grupo, tempo, acertos, palavra
             df = pd.read_csv(DB_FILE)
             df = pd.concat([df, novo_dado], ignore_index=True)
             df.to_csv(DB_FILE, index=False)
-        except Exception:
-            pass
+        except Exception as e:
+            st.error(f"Erro ao salvar resultado: {e}")
     else:
         try:
             novo_dado.to_csv(DB_FILE, index=False)
-        except Exception:
-            pass
+        except Exception as e:
+            st.error(f"Erro ao criar arquivo CSV: {e}")
 
 with st.sidebar:
     st.title("⚙️ Área de Controle")
@@ -107,12 +107,12 @@ if st.session_state.get("ver_pesquisador", False):
                     "Graduação": row["Graduação"],
                     "TCLE": row.get("TCLE", ""),  # esta parte faz referencia a um campo booleano que indica se o participante aceitou o termo de consentimento
                     "Grupo": row["Grupo"],
-                    "Tempo": int(row.get("Tempo", 0)),
+                    "Tempo": int(row.get("tempo", row.get("Tempo", 0))),
                     "Acertos": int(row["Acertos"]),
                     "Palavras": row["Palavras Digitadas"]
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            st.error(f"Erro ao ler dados do CSV: {e}")
             
     for dado in st.session_state.respostas_manual_pesquisador:
         dados_totais.append(dado)
@@ -164,7 +164,7 @@ if st.session_state.get("ver_pesquisador", False):
                         "Acertos": pontos_part,
                         "Palavras": palavras_part,
                         "TCLE": False,  # Inicialmente, o termo de consentimento não foi aceito
-                        "Tempo": st.session_state.tempo
+                        "Tempo": tempo_int
                     })
                     st.success(f"Participante {nome_part} adicionado com sucesso para esta sessão!")
                     st.rerun()
@@ -336,7 +336,6 @@ else:
 
             if t >= 60:
                 if st.button("Passar para fase de recuperação"):
-                    st.session_state.tempo_str = f"{t} segundos"
                     st.session_state.tempo= t
                     st.session_state.etapa = "recuperacao"
                     st.rerun()
@@ -390,7 +389,7 @@ else:
             st.session_state.palavras_incorretas = palavras_incorretas
             st.session_state.palavras_digitadas = palavras_digitadas
 
-            salvar_resultado_local(st.session_state.nome,st.session_state.idade,st.session_state.graduacao,st.session_state.tempo,st.session_state.grupo, st.session_state.acertos, st.session_state.palavras_digitadas)
+            salvar_resultado_local(st.session_state.nome,st.session_state.idade,st.session_state.graduacao,st.session_state.grupo,st.session_state.tempo, st.session_state.acertos, st.session_state.palavras_digitadas, tcle=st.session_state.tcle)
             
             st.session_state.etapa = "resultado"
             st.rerun()
@@ -432,6 +431,7 @@ Idade: {st.session_state.idade}
 Graduação: {st.session_state.graduacao}
 Grupo: {st.session_state.grupo}
 Pontuação: {st.session_state.acertos}/15
+Tempo: {st.session_state.tempo} segundos
 Palavras Lembradas: {", ".join(st.session_state.palavras_corretas)}
 Palavras Digitadas: {", ".join(st.session_state.palavras_digitadas)}
 Data/Hora: {pd.Timestamp.now().strftime("%d/%m/%Y %H:%M:%S")}
