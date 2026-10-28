@@ -6,7 +6,7 @@ import unicodedata
 import os
 
 st.set_page_config(
-    page_title="Experimento de Memória de Trabalho",
+    page_title="Teste Psicológico APS",
     page_icon="🧠",
     layout="centered"
 )
@@ -36,19 +36,19 @@ if "nome" not in st.session_state:
     st.session_state.nome = ""
 if "grupo" not in st.session_state:
     st.session_state.grupo = ""
-if "tempo_restante" not in st.session_state:
-    st.session_state.tempo_restante = 60
+if "tempo" not in st.session_state:
+    st.session_state.tempo = 0 
 if "respostas_manual_pesquisador" not in st.session_state:
     st.session_state.respostas_manual_pesquisador = []
 
 DB_FILE = "resultados_experimento.csv"
 
-def salvar_resultado_local(nome,idade, area, grupo, acertos, palavras_digitadas):
+def salvar_resultado_local(nome,idade, graduacao, grupo, acertos, palavras_digitadas):
     novo_dado = pd.DataFrame([{
         "Data": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M:%S"),
         "Nome": nome,
         "Idade":idade,
-        "Area": area,
+        "Graduação": graduacao,
         "Grupo": grupo,
         "Acertos": acertos,
         "Palavras Digitadas": ", ".join(palavras_digitadas)
@@ -102,7 +102,8 @@ if st.session_state.get("ver_pesquisador", False):
                 dados_totais.append({
                     "Nome": row["Nome"],
                     "Idade": row["Idade"],
-                    "Area": row["Area"],
+                    "Graduação": row["Graduação"],
+                    "TCLE": row.get("TCLE", ""),  # esta parte faz referencia a um campo booleano que indica se o participante aceitou o termo de consentimento
                     "Grupo": row["Grupo"],
                     "Acertos": int(row["Acertos"]),
                     "Palavras": row["Palavras Digitadas"]
@@ -123,7 +124,7 @@ if st.session_state.get("ver_pesquisador", False):
                 linhas = texto_comprovante.split("\n")
                 nome_part = ""
                 idade = ""
-                area = ""
+                graduacao = ""
                 grupo_part = ""
                 pontos_part = 0
                 palavras_part = ""
@@ -133,8 +134,8 @@ if st.session_state.get("ver_pesquisador", False):
                         nome_part = linha.split(":")[1].strip()
                     elif "Idade:" in linha:
                         idade = linha.split(":")[1].strip()
-                    elif "Área:" in linha:
-                        area = linha.split(":")[1].strip()
+                    elif "Graduação:" in linha:
+                        graduacao = linha.split(":")[1].strip()
                     elif "Grupo:" in linha:
                         grupo_part = linha.split(":")[1].strip()
                     elif "Pontuação:" in linha:
@@ -146,10 +147,11 @@ if st.session_state.get("ver_pesquisador", False):
                     st.session_state.respostas_manual_pesquisador.append({
                         "Nome": nome_part,
                         "Idade": idade,
-                        "Area": area,
+                        "Graduação": graduacao,
                         "Grupo": grupo_part,
                         "Acertos": pontos_part,
-                        "Palavras": palavras_part
+                        "Palavras": palavras_part,
+                        "TCLE": False  # Inicialmente, o termo de consentimento não foi aceito
                     })
                     st.success(f"Participante {nome_part} adicionado com sucesso para esta sessão!")
                     st.rerun()
@@ -172,7 +174,7 @@ if st.session_state.get("ver_pesquisador", False):
         summary.columns = ["Grupo", "N (Participantes)", "Média de Acertos", "Desvio Padrão"]
         st.table(summary)
         
-        st.subheader("📊 Comparação Visual das Médias")
+        st.subheader("📊 Comparação Visual das Médias") 
         chart_data = pd.DataFrame({
             "Grupo": summary["Grupo"],
             "Média de Palavras Lembradas": summary["Média de Acertos"]
@@ -198,49 +200,52 @@ if st.session_state.get("ver_pesquisador", False):
         st.info("Nenhum dado registrado ainda. Realize o teste ou cole os comprovantes dos participantes acima para visualizar as análises estatísticas e gráficos!")
 
 else:
-    st.title("🧠 Teste de Memória de Curto Prazo")
+    st.title("🧠 Teste Psicológico APS")
     st.markdown("### Experimento de Psicologia Cognitiva")
     st.caption("Trabalho Prático de Processos Psicológicos Básicos — Ano 2026")
     st.divider()
 
     if st.session_state.etapa == "inicio":
         st.write("""
-        Olá! Agradecemos muito a sua disponibilidade para participar deste estudo acadêmico simples 
-        sobre memória de curto prazo e processos de atenção.
+        Olá! Agradecemos muito a sua disponibilidade para participar deste estudo acadêmico simples.
         
         **Instruções de Confidencialidade:**
         * Este teste é totalmente voluntário e anônimo.
         * Os dados coletados serão utilizados estritamente para fins de análise estatística acadêmica no trabalho de nossa disciplina de Psicologia.
-        * A lista de palavras utilizada é cientificamente aceita para estudos de memória e foi baseada no teste RAVLT (Rey Auditory Verbal Learning Test).
-        * Para prosseguir, deve possuir a idade minima de 18 anos. Por favor, leia atentamente as instruções e assine o termo de consentimento.
+        * Para prosseguir, deve possuir a idade minima de 18 anos.
+        * Leia atentamente as instruções e assine o termo de consentimento TCLE.
         """)
         
         nome_input = st.text_input("Digite seu Nome, Apelido ou Iniciais:", max_chars=40)
         idade_input = st.text_input("Digite sua Idade:", max_chars=3)
-        area_input = st.text_input("Digite sua Área de Estudo ou Curso:", max_chars=100, placeholder="Este campo é opcional", help="Este campo é opcional e não será utilizado para análise estatística.")
+        graduacao_input = st.text_input("Digite sua Graduação:", max_chars=100, placeholder="Este campo é opcional", help="Este campo é opcional e não será utilizado para análise estatística.")
+        tcle_input = st.checkbox("Li e concordo com o termo de consentimento TCLE")
         
         st.subheader("Escolha o método de participação:")
         metodo = st.radio(
             "Selecione uma opção:",
-            ["Atribuição Automática (Recomendado para balancear os grupos)", 
+            ["Atribuição Automática", 
              "Selecionar Grupo Manualmente (Use apenas se instruído pelos pesquisadores)"]
         )
         
         grupo_selecionado = None
         if metodo == "Selecionar Grupo Manualmente (Use apenas se instruído pelos pesquisadores)":
-            grupo_selecionado = st.selectbox("Selecione o seu grupo:", ["Grupo experimental (Com Distração)", "Grupo controle (Sem Distração)"])
+            grupo_selecionado = st.selectbox("Selecione o seu grupo:", ["Grupo experimental", "Grupo controle"])
             
-        if st.button("Iniciar Experimento 🚀"):
+        if st.button("Iniciar Teste 🚀"):
             if not nome_input.strip():
                 st.warning("Por favor, insira seu nome ou apelido para prosseguir.")
             elif not idade_input.strip().isdigit() or int(idade_input.strip()) < 18:
                 st.warning("Por favor, insira uma idade válida (18 anos ou mais) para prosseguir.")
+            elif not tcle_input:
+                st.warning("Você deve concordar com o termo de consentimento TCLE para prosseguir.")
             else:
                 st.session_state.nome = nome_input.strip()
                 st.session_state.idade = idade_input.strip()
-                st.session_state.area = area_input.strip() 
-                if metodo == "Atribuição Automática (Recomendado para balancear os grupos)":
-                    st.session_state.grupo = random.choice(["Grupo experimental (Com Distração)", "Grupo controle (Sem Distração)"])
+                st.session_state.graduacao = graduacao_input.strip()
+                st.session_state.tcle = tcle_input  # Armazena o status do termo de consentimento
+                if metodo == "Atribuição Automática":
+                    st.session_state.grupo = random.choice(["Grupo experimental", "Grupo controle"])
                 else:
                     st.session_state.grupo = grupo_selecionado
                 
@@ -251,46 +256,47 @@ else:
         st.subheader("📋 Instruções do seu Teste")
         st.markdown(f"Olá, **{st.session_state.nome}**! Você foi designado para o **{st.session_state.grupo}**.")
         
-        if st.session_state.grupo == "Grupo experimental (Com Distração)":
+        if st.session_state.grupo == "Grupo experimental":
             st.error("⚠️ LEIA COM MUITA ATENÇÃO ESTA REGRA:")
             st.markdown("""
-            Na próxima tela, você verá uma lista de **15 palavras** por exatamente **1 Minuto**.
+            Na próxima tela, você irá realizar uma leitura curta.
             
-            Sua tarefa é memorizar o máximo de palavras possível, mas **COM UMA CONDIÇÃO OBRIGATÓRIA**:
+            Sua tarefa deve ser feita **COM UMA CONDIÇÃO OBRIGATÓRIA**:
             
-            * Durante os 1 minuto em que as palavras estiverem na tela, você deve **REPETIR EM VOZ ALTA E DE FORMA SEGUIDA E CONSTANTE** os números:
+            * Durante a leitura, você deve **REPETIR EM VOZ ALTA E DE FORMA SEGUIDA E CONSTANTE** os números:
               
               **"um, dois, três, um, dois, três, um, dois, três..."**
             
-            * Você deve falar em voz alta de forma audível e contínua, sem parar um segundo sequer, enquanto lê as palavras na tela.
+            * Você deve falar em voz alta de forma audível e contínua, sem parar um segundo sequer, enquanto estiver lendo.
             * Não vale ficar em silêncio! A repetição falada é essencial para o experimento.
             """)
         else:
             st.success("✨ INSTRUÇÕES DO SEU TESTE:")
             st.markdown("""
-            Na próxima tela, você verá uma lista de **15 palavras** por exatamente **1 Minuto**.
+            Na próxima tela, você irá realizar uma leitura curta.
             
-            Sua tarefa é memorizar o máximo de palavras possível, sob a seguinte condição:
+            Sua tarefa deve ser feita **COM UMA CONDIÇÃO OBRIGATÓRIA**:
             
-            * Durante os 1 Minuto, você deve fazer a tarefa em **SILÊNCIO ABSOLUTO**.
-            * Concentre-se apenas nas palavras na tela, sem emitir nenhum som e sem escrever nada.
+            * Durante a leitura, você deve ** FICAR EM SILÊNCIO ABSOLUTO**.
+            
+            * Você deve se manter em silêncio, enquanto estiver Lendo. 
             """)
             
         st.markdown("---")
-        st.warning("Certifique-se de que está em um ambiente tranquilo e sem outras interrupções antes de clicar abaixo. O tempo começará a correr imediatamente!")
+        st.warning("Certifique-se de que está em um ambiente tranquilo e sem outras interrupções antes de clicar abaixo. O tempo minimo de leitura é de 1 minuto.")
         
-        if st.button("Estou Pronto, Mostrar Palavras! ⏱️"):
+        if st.button("Estou Pronto! ⏱️"):
             st.session_state.etapa = "exposicao"
-            st.session_state.tempo_restante = st.session_state.tempo_restante
+            st.session_state.tempo = st.session_state.tempo
             st.rerun()
 
     elif st.session_state.etapa == "exposicao":
-        st.subheader("⏱️ Memorize as palavras abaixo!")
+        st.subheader("⏱️ Leia!")
         
-        if st.session_state.grupo == "Grupo experimental (Com Distração)":
-            st.markdown("🔊 **RECORDE-SE:** Continue repetindo **'UM, DOIS, TRÊS...' em voz alta** sem parar!")
+        if st.session_state.grupo == "Grupo experimental":
+            st.markdown("🔊 **LEMBRE-SE:** Continue repetindo **'UM, DOIS, TRÊS...' em voz alta** sem parar!")
         else:
-            st.markdown("🤫 **RECORDE-SE:** Faça a memorização em **silêncio absoluto**.")
+            st.markdown("🤫 **LEMBRE-SE:** Faça a leitura em **silêncio absoluto**.")
             
         st.divider()
         
@@ -303,21 +309,25 @@ else:
         
         placeholder_timer = st.empty()
         
-        for t in range(st.session_state.tempo_restante, -1, -1):
-            st.session_state.tempo_restante = t
-            placeholder_timer.markdown(f"<h2 style='text-align: center; color: #ff4b4b;'>Tempo Restante: {t} segundos</h2>", unsafe_allow_html=True)
+        for t in range(st.session_state.tempo, 70, 1):
+            st.session_state.tempo = t
+            placeholder_timer.markdown(f"<h2 style='text-align: center; color: #93C47D;'>Tempo: {t} segundos</h2>", unsafe_allow_html=True)
+            if t >= 60:
+                if st.button("Passar para fase de recuperação"):
+                    st.session_state.tempo= 60
+                    st.session_state.etapa = "recuperacao"
+                    st.rerun()
+                else:
+                    break
             time.sleep(1)
-            if t == 0:
-                break
-            
 
-        st.session_state.etapa = "recuperacao"
-        st.rerun()
+
+
 
     elif st.session_state.etapa == "recuperacao":
         st.subheader("✏️ Fase de Recuperação: O que você lembra?")
         st.markdown("""
-        Agora, digite as palavras que você se lembra de ter visto na tela.
+        Agora, digite as palavras que você se lembra de ter visto na tela anterior.
         
         **Regras de integridade científica:**
         * NÃO consulte nenhuma anotação ou volte para a tela anterior.
@@ -331,7 +341,7 @@ else:
             if not resposta_usuario.strip():
                 st.warning("Por favor, digite pelo menos uma palavra para prosseguir.")
                 st.stop()
-            linhas_cruas = resposta_usuario.replace(",", "\n").split("\n")
+            linhas_cruas = resposta_usuario.replace(",", " ").replace("\n", " ").split(" ")
             palavras_digitadas = [w.strip() for w in linhas_cruas if w.strip()]
             
             acertos = 0
@@ -360,7 +370,7 @@ else:
             st.session_state.palavras_incorretas = palavras_incorretas
             st.session_state.palavras_digitadas = palavras_digitadas
 
-            salvar_resultado_local(st.session_state.nome,st.session_state.idade,st.session_state.area,st.session_state.grupo, acertos, palavras_digitadas)
+            salvar_resultado_local(st.session_state.nome,st.session_state.idade,st.session_state.graduacao,st.session_state.grupo, acertos, palavras_digitadas)
             
             st.session_state.etapa = "resultado"
             st.rerun()
@@ -399,7 +409,7 @@ else:
         comprovante = f"""=== COMPROVANTE DE PARTICIPAÇÃO ===
 Nome: {st.session_state.nome}
 Idade: {st.session_state.idade}
-Área de Estudo: {st.session_state.area}
+Graduação: {st.session_state.graduacao}
 Grupo: {st.session_state.grupo}
 Pontuação: {st.session_state.acertos}/15
 Palavras Lembradas: {", ".join(st.session_state.palavras_corretas)}
@@ -415,5 +425,5 @@ Data/Hora: {pd.Timestamp.now().strftime("%d/%m/%Y %H:%M:%S")}
             st.session_state.etapa = "inicio"
             st.session_state.nome = ""
             st.session_state.grupo = ""
-            st.session_state.tempo_restante = 60
+            st.session_state.tempo = 0
             st.rerun()
